@@ -71,32 +71,6 @@ RUN curl -sO https://raw.githubusercontent.com/DillLabs/launch-dill-node/main/di
 # Удержание контейнера запущенным
 CMD ["tail", "-f", "/dev/null"]
 EOF
-## Копирование скрипта автоматизации
-#COPY automate_dill.sh /dill/automate_dill.sh
-#RUN chmod +x /dill/automate_dill.sh
-#
-## Запуск скрипта при запуске контейнера
-#CMD ["/dill/automate_dill.sh"]
-
-
-
-    # Создаем скрипт автоматизации automate_dill.sh
-#    cat > "$instance_dir/automate_dill.sh" <<'EOF'
-##!/usr/bin/expect -f
-#
-#set timeout -1
-#
-#spawn /dill/dill.sh
-#
-## Автоматизация интерактивного меню
-## Измените следующие команды в соответствии с вашими потребностями
-## Пример:
-## expect "Enter option: " { send "1\r" }
-## Добавьте дополнительные expect-send пары по мере необходимости
-#
-#expect eof
-#EOF
-
     # Собираем Docker образ для данного экземпляра
     docker build -t dill_image_$instance_num "$instance_dir"
 
@@ -116,6 +90,40 @@ EOF
     docker exec -it $instance_name /bin/bash
 }
 
+# Функция для копирования validator_keys из контейнеров
+copy_validator_keys() {
+    base_dir="/root/dill_instances"
+
+    # Находим все контейнеры с именем dill_instanceN
+    for container in $(docker ps -a --filter "name=dill_instance" --format "{{.Names}}"); do
+        echo "Копирование validator_keys из контейнера $container..."
+
+        # Получаем номер экземпляра из имени контейнера
+        instance_num=$(echo $container | grep -o '[0-9]\+')
+        instance_dir="$base_dir/instance$instance_num"
+
+        # Проверяем, существует ли директория назначения
+        if [ ! -d "$instance_dir" ]; then
+            echo "Директория $instance_dir не существует, создаю..."
+            mkdir -p "$instance_dir"
+        fi
+
+        # Проверяем, существует ли директория validator_keys внутри контейнера
+        if docker exec "$container" [ -d "/dill/dill/validator_keys" ]; then
+            # Копируем директорию
+            docker cp "$container":/dill/dill/validator_keys "$instance_dir"/validator_keys
+
+            if [ $? -eq 0 ]; then
+                echo "validator_keys успешно скопирован в $instance_dir/validator_keys"
+            else
+                echo "Ошибка при копировании validator_keys из контейнера $container"
+            fi
+        else
+            echo "Директория /dill/dill/validator_keys не найдена в контейнере $container"
+        fi
+    done
+}
+
 # Основное меню
 while true; do
     echo ""
@@ -125,6 +133,7 @@ while true; do
     echo ""
     echo "Выберите действие:"
     echo "1. Установить новую ноду"
+    echo "2. Сделать бэкап папок с ключами"
     echo "0. Выход"
     read -p "Введите номер действия: " action
 
@@ -154,6 +163,9 @@ while true; do
             # Объединяем порты в строку для вывода
             ports_list=$(printf '%s ' "${free_ports[@]}")
             echo "Экземпляр dill_instance$instance_num успешно запущен с портами $ports_list"
+            ;;
+        2)
+            copy_validator_keys
             ;;
         0)
             echo "Выход."
