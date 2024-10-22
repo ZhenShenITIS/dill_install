@@ -60,13 +60,16 @@ WORKDIR /dill
 # Загрузка dill.sh
 RUN curl -sO https://raw.githubusercontent.com/DillLabs/launch-dill-node/main/dill.sh && chmod +x dill.sh
 
+
+EOF
 ## Копирование скрипта автоматизации
 #COPY automate_dill.sh /dill/automate_dill.sh
 #RUN chmod +x /dill/automate_dill.sh
 #
 ## Запуск скрипта при запуске контейнера
 #CMD ["/dill/automate_dill.sh"]
-EOF
+
+
 
     # Создаем скрипт автоматизации automate_dill.sh
 #    cat > "$instance_dir/automate_dill.sh" <<'EOF'
