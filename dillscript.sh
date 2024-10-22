@@ -60,7 +60,8 @@ WORKDIR /dill
 # Загрузка dill.sh
 RUN curl -sO https://raw.githubusercontent.com/DillLabs/launch-dill-node/main/dill.sh && chmod +x dill.sh
 
-
+# Удержание контейнера запущенным
+CMD ["tail", "-f", "/dev/null"]
 EOF
 ## Копирование скрипта автоматизации
 #COPY automate_dill.sh /dill/automate_dill.sh
