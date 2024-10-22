@@ -39,6 +39,9 @@ run_dill_container() {
     PROXY_PORT=$(echo $proxy_info | cut -d':' -f2)
     PROXY_USER=$(echo $proxy_info | cut -d':' -f3)
     PROXY_PASS=$(echo $proxy_info | cut -d':' -f4)
+    # Копируем архив программы в директорию экземпляра
+    cp "dill-v1.0.3-linux-amd64.tar.gz" "$instance_dir/"
+
 
     # Создаем Dockerfile в директории экземпляра
     cat > "$instance_dir/Dockerfile" <<EOF
@@ -56,6 +59,11 @@ RUN apt-get update && apt-get install -y curl expect net-tools lsof
 # Создание и установка рабочего каталога
 RUN mkdir /dill
 WORKDIR /dill
+
+# Копирование архива программы в контейнер
+COPY dill-v1.0.3-linux-amd64.tar.gz /dill/
+
+RUN chmod 777 dill-v1.0.3-linux-amd64.tar.gz
 
 # Загрузка dill.sh
 RUN curl -sO https://raw.githubusercontent.com/DillLabs/launch-dill-node/main/dill.sh && chmod +x dill.sh
