@@ -51,7 +51,7 @@ ENV http_proxy="http://$PROXY_USER:$PROXY_PASS@$PROXY_IP:$PROXY_PORT/"
 ENV https_proxy="http://$PROXY_USER:$PROXY_PASS@$PROXY_IP:$PROXY_PORT/"
 
 # Установка необходимых пакетов
-RUN apt-get update && apt-get install -y curl expect net-tools
+RUN apt-get update && apt-get install -y curl expect net-tools lsof
 
 # Создание и установка рабочего каталога
 RUN mkdir /dill
