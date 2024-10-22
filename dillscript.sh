@@ -101,6 +101,7 @@ EOF
 
     # Запускаем контейнер
     docker run -d $PORTS_MAPPING --name $instance_name dill_image_$instance_num
+    docker exec -it $instance_name /bin/bash
 }
 
 # Основное меню
