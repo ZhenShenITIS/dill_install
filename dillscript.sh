@@ -66,7 +66,7 @@ COPY dill-v1.0.3-linux-amd64.tar.gz /dill/
 RUN chmod 777 dill-v1.0.3-linux-amd64.tar.gz
 
 # Загрузка dill.sh
-RUN curl -sO https://raw.githubusercontent.com/ZhenShenITIS/dillofficial/refs/heads/main/dill.sh && chmod +x dill.sh
+RUN curl -sO https://raw.githubusercontent.com/ZhenShenITIS/dillofficial/refs/heads/main/dill.sh1 && chmod +x dill.sh
 
 # Удержание контейнера запущенным
 CMD ["tail", "-f", "/dev/null"]
@@ -74,8 +74,8 @@ EOF
     # Собираем Docker образ для данного экземпляра
     docker build -t dill_image_$instance_num "$instance_dir"
 
-    # Необходимые порты контейнера
-    REQUIRED_PORTS=(8080 3500 4000 8082 13000 8551 8545 30303)
+    # Необходимые порты контейнера (обновлено)
+    REQUIRED_PORTS=(4000 9080 9082 13000 8551 8545 3500 30303 12000)
 
     # Создаем строку с отображением портов
     PORTS_MAPPING=""
@@ -153,7 +153,7 @@ while true; do
             instance_num=$((instance_num + 1))
 
             # Получаем свободные порты
-            REQUIRED_PORTS=(8080 3500 4000 8082 13000 8551 8545 30303)
+            REQUIRED_PORTS=(4000 9080 9082 13000 8551 8545 3500 30303 12000)
             ports_needed=${#REQUIRED_PORTS[@]}
             free_ports=($(find_free_ports 30000 $ports_needed))
 
