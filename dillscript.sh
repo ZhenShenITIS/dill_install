@@ -73,7 +73,7 @@ COPY dill-v1.0.3-linux-amd64.tar.gz /dill/
 RUN chmod 777 dill-v1.0.3-linux-amd64.tar.gz
 
 # Загрузка dill.sh
-RUN curl -sO https://raw.githubusercontent.com/ZhenShenITIS/dillofficial/refs/heads/main/dill.sh1 && chmod +x dill.sh
+RUN curl -sO https://raw.githubusercontent.com/ZhenShenITIS/dillofficial/refs/heads/main/dill.sh && chmod +x dill.sh
 
 # Удержание контейнера запущенным
 CMD ["tail", "-f", "/dev/null"]
