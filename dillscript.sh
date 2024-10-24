@@ -4,44 +4,51 @@
 command -v docker >/dev/null 2>&1 || { echo "Docker не установлен. Устанавливаю Docker..."; apt-get update && apt-get install -y docker.io; }
 
 # Функция для поиска блока свободных портов
-find_free_ports() {
+find_free_port_block() {
     local start_port=$1
-    local count=$2
-    local ports=()
-    local port=$start_port
-    while [ ${#ports[@]} -lt $count ]; do
-        if ! netstat -tuln | grep -q ":$port "; then
-            ports+=($port)
+    local num_ports=$2
+    local increment=$3
+    local max_port=65535  # Максимальный номер порта
+
+    while [ $start_port -le $((max_port - num_ports)) ]; do
+        local all_free=true
+        for ((port=$start_port; port<$((start_port + num_ports)); port++)); do
+            if netstat -tuln | grep -q ":${port}[[:space:]]"; then
+                all_free=false
+                break
+            fi
+        done
+        if [ "$all_free" = true ]; then
+            echo "$start_port"
+            return 0
+        else
+            start_port=$((start_port + increment))
         fi
-        port=$((port + 1))
     done
-    echo "${ports[@]}"
+    return 1  # Не удалось найти свободный блок портов
 }
 
 # Функция для запуска контейнера с программой DillLabs
 run_dill_container() {
     local instance_num=$1
     local proxy_info=$2
-    shift 2
-    local ports=("$@")
     local instance_name="dill_instance$instance_num"
     local instance_dir="/root/dill_instances/instance$instance_num"
 
     # Создаем директорию экземпляра
     mkdir -p "$instance_dir"
 
-    # Сохраняем proxy_info и ports в файлы для будущего использования
+    # Сохраняем proxy_info в файл для будущего использования
     echo "$proxy_info" > "$instance_dir/proxy.conf"
-    echo "${ports[@]}" > "$instance_dir/ports.conf"
 
     # Парсим proxy_info
     PROXY_IP=$(echo $proxy_info | cut -d':' -f1)
     PROXY_PORT=$(echo $proxy_info | cut -d':' -f2)
     PROXY_USER=$(echo $proxy_info | cut -d':' -f3)
     PROXY_PASS=$(echo $proxy_info | cut -d':' -f4)
+
     # Копируем архив программы в директорию экземпляра
     cp "dill-v1.0.3-linux-amd64.tar.gz" "$instance_dir/"
-
 
     # Создаем Dockerfile в директории экземпляра
     cat > "$instance_dir/Dockerfile" <<EOF
@@ -66,27 +73,42 @@ COPY dill-v1.0.3-linux-amd64.tar.gz /dill/
 RUN chmod 777 dill-v1.0.3-linux-amd64.tar.gz
 
 # Загрузка dill.sh
-RUN curl -sO https://raw.githubusercontent.com/ZhenShenITIS/dillofficial/refs/heads/main/dill.sh && chmod +x dill.sh
+RUN curl -sO https://raw.githubusercontent.com/ZhenShenITIS/dillofficial/refs/heads/main/dill.sh1 && chmod +x dill.sh
 
 # Удержание контейнера запущенным
 CMD ["tail", "-f", "/dev/null"]
 EOF
+
     # Собираем Docker образ для данного экземпляра
     docker build -t dill_image_$instance_num "$instance_dir"
 
-    # Необходимые порты контейнера (обновлено)
-    REQUIRED_PORTS=(4000 9080 9082 13000 8551 8545 3500 30303 12000)
+    # Расчет порта
+    base_port=30000
+    num_ports=9
+    increment=9
+    initial_start_port=$((base_port + (instance_num - 1) * increment))
+    start_port=$(find_free_port_block $initial_start_port $num_ports $increment)
+    if [ $? -ne 0 ]; then
+        echo "Не удалось найти свободный блок из $num_ports портов начиная с порта $initial_start_port"
+        exit 1
+    fi
+    end_port=$((start_port + num_ports - 1))
 
-    # Создаем строку с отображением портов
     PORTS_MAPPING=""
-    for i in "${!ports[@]}"; do
-        HOST_PORT=${ports[$i]}
-        CONTAINER_PORT=${REQUIRED_PORTS[$i]}
-        PORTS_MAPPING="$PORTS_MAPPING -p $HOST_PORT:$CONTAINER_PORT"
+    for ((port=$start_port; port<=$end_port; port++)); do
+        PORTS_MAPPING="$PORTS_MAPPING -p $port:$port"
+    done
+
+    # Выводим занимаемые порты перед запуском контейнера
+    echo "Экземпляр $instance_name использует порты с $start_port по $end_port:"
+    for ((port=$start_port; port<=$end_port; port++)); do
+        echo "Хостовый порт $port -> Порт контейнера $port"
     done
 
     # Запускаем контейнер
     docker run -d $PORTS_MAPPING --name $instance_name dill_image_$instance_num
+
+    # Переходим в контейнер
     docker exec -it $instance_name /bin/bash
 }
 
@@ -152,17 +174,9 @@ while true; do
             instance_num=$(ls -l $base_dir | grep -c ^d)
             instance_num=$((instance_num + 1))
 
-            # Получаем свободные порты
-            REQUIRED_PORTS=(4000 9080 9082 13000 8551 8545 3500 30303 12000)
-            ports_needed=${#REQUIRED_PORTS[@]}
-            free_ports=($(find_free_ports 30000 $ports_needed))
-
             # Запускаем контейнер с программой
-            run_dill_container $instance_num "$proxy_details" "${free_ports[@]}"
+            run_dill_container $instance_num "$proxy_details"
 
-            # Объединяем порты в строку для вывода
-            ports_list=$(printf '%s ' "${free_ports[@]}")
-            echo "Экземпляр dill_instance$instance_num успешно запущен с портами $ports_list"
             ;;
         2)
             copy_validator_keys
